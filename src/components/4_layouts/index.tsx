@@ -5,7 +5,7 @@ export default function Index(){
     return(
     <>
         <NavBar/>
-        <main className="max-w-7xl mx-auto px-4">
+        <main className="max-w-7xl mx-auto p-4">
             <Outlet/>
         </main>
     </>
