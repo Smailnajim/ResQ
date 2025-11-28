@@ -1,17 +1,140 @@
 {
-    "key": {
-        "name": "ahmed"
-    },
-    "key2": {
-        "name": "ahmed2"
-    },
-    "key3": {
-        "name": "ahmed3"
-    },
-    "key4": {
-        "name": "ahmed4"
-    },
-    "key5": {
-        "name": "ahmed4"
-    }
+    "users": [
+        {
+            "id": "1",
+            "roleId": 1,
+            "firstName": "Ayoub",
+            "lastName": "Mashat",
+            "age": 30,
+            "state": "ACTIVE"
+        },
+        {
+            "id": "2",
+            "roleId": 2,
+            "firstName": "Karim",
+            "lastName": "Zaki",
+            "age": 45,
+            "state": "ACTIVE"
+        }
+    ],
+    "roles": [
+        {
+            "id": 1,
+            "name": "Régulateur"
+        },
+        {
+            "id": 2,
+            "name": "Chef de Parc"
+        },
+        {
+            "id": 3,
+            "name": "driver"
+        },
+        {
+            "id": 4,
+            "name": "medic"
+        }
+    ],
+    "ambulances": [
+        {
+            "id": 1,
+            "matricule": "AMB-001",
+            "status": "AVAILABLE",
+            "location": {
+                "lat": 33.5898,
+                "lng": -7.5898
+            },
+            "group": {
+                "driver": "Ahmed",
+                "medic": "Sara"
+            },
+            "equipment": [
+                "Defibrillator",
+                "Oxygen"
+            ]
+        },
+        {
+            "id": 2,
+            "matricule": "AMB-002",
+            "status": "OCCUPIED",
+            "location": {
+                "lat": 33.5600,
+                "lng": -7.6100
+            },
+            "group": {
+                "driver": "Omar",
+                "medic": "Yassine"
+            },
+            "equipment": [
+                "Basic Kit"
+            ]
+        }
+    ],
+    "incidents": [
+        {
+            "id": 101,
+            "type": "Cardiac",
+            "address": "123 Bd Zerktouni",
+            "location": {
+                "lat": 33.5700,
+                "lng": -7.6000
+            },
+            "gravity": "CRITICAL",
+            "status": "IN_PROGRESS",
+            "patient": {
+                "name": "Hassan",
+                "age": 65
+            },
+            "AmbulanceId": 2,
+            "createdAt": "2025-11-26T12:00:00Z"
+        },
+        {
+            "id": 102,
+            "type": "Accident",
+            "address": "Route El Jadida",
+            "location": {
+                "lat": 33.5450,
+                "lng": -7.6600
+            },
+            "gravity": "HIGH",
+            "status": "PENDING",
+            "patient": {
+                "name": "Unknown",
+                "age": null
+            },
+            "AmbulanceId": null,
+            "createdAt": "2025-11-26T14:30:00Z"
+        }
+    ],
+    "maintenance": [
+        {
+            "id": 1001,
+            "ambulanceId": 1,
+            "discription": "Oil change needed."
+        }
+    ],
+    "action": [
+        {
+            "id": 1,
+            "type": "ASSIGNMENT",
+            "operations":"AMB-002 assigned to INC-101",
+            "userId": 1
+        },
+        {
+            "id": 2,
+            "type": "STATUS_CHANGE",
+            "operations":"AMB-001 status set to AVAILABLE",
+            "userId": 1
+        }
+    ]
 }
+
+
+
+
+
+
+
+
+
+

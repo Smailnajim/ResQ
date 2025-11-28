@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import NavBar from "../3_Modules/NavBar";
+import NavBar from "../2_Widgets/navbar";
 
 export default function Index(){
     return(

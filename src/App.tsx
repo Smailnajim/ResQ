@@ -1,6 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import Index from "./components/4_layouts";
-import Test from "./components/3_Modules/Test";
+import CalendarDemo from "./components/3_Modules/Test";
 
 
 function App() {
@@ -8,7 +8,7 @@ function App() {
     <>
     <Routes>
       <Route path="/" element={<Index/>}>
-        <Route index element={<Test/>}/>
+        <Route index element={<CalendarDemo/>}/>
         {/* <Route path="map" element={</>}/> */}
         {/* <Route path="fleet" element={</>}/> */}
         {/* <Route path="incidents" element={</>}/> */}
