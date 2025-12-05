@@ -30,6 +30,16 @@ export default function Fleet() {
     const [filter, setFilter] = useState<StatusFilter>("ALL");
     const [updating, setUpdating] = useState<string | number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [showForm, setShowForm] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const [formData, setFormData] = useState({
+        matricule: "",
+        driver: "",
+        medic: "",
+        equipment: "",
+        lat: "33.5731",
+        lng: "-7.5898",
+    });
 
     const fetchData = async () => {
         try {
@@ -52,7 +62,6 @@ export default function Fleet() {
         fetchData();
     }, []);
 
-    // Check if ambulance is assigned to an active incident
     const isAssignedToActiveIncident = (ambulanceId: string | number): boolean => {
         return incidents.some(
             incident =>
@@ -61,17 +70,14 @@ export default function Fleet() {
         );
     };
 
-    // Update ambulance status
     const updateAmbulanceStatus = async (ambulanceId: string | number, newStatus: Ambulance["status"]) => {
-        // Check if assigned to active incident
         if (isAssignedToActiveIncident(ambulanceId)) {
-            setError(`Cannot change status: This ambulance is assigned to an active incident`);
+            setError("Cannot change status: Ambulance is assigned to an active incident");
             setTimeout(() => setError(null), 4000);
             return;
         }
 
         setUpdating(ambulanceId);
-        setError(null);
         try {
             await fetch(`http://localhost:5000/ambulances/${ambulanceId}`, {
                 method: "PATCH",
@@ -86,12 +92,42 @@ export default function Fleet() {
         }
     };
 
-    // Filter ambulances based on status
+    const createAmbulance = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.matricule || !formData.driver || !formData.medic) {
+            setError("Please fill in all required fields");
+            setTimeout(() => setError(null), 3000);
+            return;
+        }
+
+        setCreating(true);
+        try {
+            await fetch("http://localhost:5000/ambulances", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    matricule: formData.matricule,
+                    status: "AVAILABLE",
+                    location: { lat: parseFloat(formData.lat), lng: parseFloat(formData.lng) },
+                    group: { driver: formData.driver, medic: formData.medic },
+                    equipment: formData.equipment.split(",").map(e => e.trim()).filter(e => e),
+                }),
+            });
+            await fetchData();
+            setShowForm(false);
+            setFormData({ matricule: "", driver: "", medic: "", equipment: "", lat: "33.5731", lng: "-7.5898" });
+        } catch (error) {
+            console.error("Error creating ambulance:", error);
+            setError("Failed to create ambulance");
+        } finally {
+            setCreating(false);
+        }
+    };
+
     const filteredAmbulances = ambulances.filter(amb =>
         filter === "ALL" ? true : amb.status === filter
     );
 
-    // Count by status
     const counts = {
         ALL: ambulances.length,
         AVAILABLE: ambulances.filter(a => a.status === "AVAILABLE").length,
@@ -100,211 +136,292 @@ export default function Fleet() {
         LUNCH_BREAK: ambulances.filter(a => a.status === "LUNCH_BREAK").length,
     };
 
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case "AVAILABLE": return "bg-green-100 text-green-800 border-green-200";
-            case "OCCUPIED": return "bg-red-100 text-red-800 border-red-200";
-            case "MAINTENANCE": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-            case "LUNCH_BREAK": return "bg-orange-100 text-orange-800 border-orange-200";
-            default: return "bg-gray-100 text-gray-800 border-gray-200";
-        }
+    const getStatusConfig = (status: string) => {
+        const configs: Record<string, { bg: string; text: string; icon: string; border: string }> = {
+            AVAILABLE: { bg: "bg-emerald-500", text: "text-emerald-600", icon: "🟢", border: "border-emerald-400" },
+            OCCUPIED: { bg: "bg-red-500", text: "text-red-600", icon: "🔴", border: "border-red-400" },
+            MAINTENANCE: { bg: "bg-amber-500", text: "text-amber-600", icon: "🟡", border: "border-amber-400" },
+            LUNCH_BREAK: { bg: "bg-orange-500", text: "text-orange-600", icon: "🍴", border: "border-orange-400" },
+        };
+        return configs[status] || { bg: "bg-gray-500", text: "text-gray-600", icon: "⚪", border: "border-gray-400" };
     };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case "AVAILABLE": return "🟢";
-            case "OCCUPIED": return "🔴";
-            case "MAINTENANCE": return "🟡";
-            case "LUNCH_BREAK": return "🍴";
-            default: return "⚪";
-        }
-    };
-
-    const filterButtons: { value: StatusFilter; label: string; color: string }[] = [
-        { value: "ALL", label: "All", color: "bg-gray-600" },
-        { value: "AVAILABLE", label: "Available", color: "bg-green-600" },
-        { value: "OCCUPIED", label: "Occupied", color: "bg-red-600" },
-        { value: "MAINTENANCE", label: "Maintenance", color: "bg-yellow-600" },
-        { value: "LUNCH_BREAK", label: "Pause déjeuner", color: "bg-orange-600" },
-    ];
 
     return (
-        <div className="space-y-6">
-            {/* Error Message */}
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
+            {/* Error Toast */}
             {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2 animate-pulse">
-                    <span className="text-xl">⚠️</span>
-                    <span className="font-medium">{error}</span>
-                    <button
-                        onClick={() => setError(null)}
-                        className="ml-auto text-red-500 hover:text-red-700 font-bold"
-                    >
-                        ×
-                    </button>
+                <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-pulse">
+                    <span>⚠️</span>
+                    <span>{error}</span>
+                    <button onClick={() => setError(null)} className="ml-2 hover:bg-red-600 rounded-full p-1">✕</button>
                 </div>
             )}
 
             {/* Header */}
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-2xl">🚑</span>
+            <div className="max-w-7xl mx-auto mb-8">
+                <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                        {/* Title */}
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                <span className="text-3xl">🚑</span>
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+                                    Fleet Management
+                                </h1>
+                                <p className="text-gray-500">Manage and monitor your ambulance fleet</p>
+                            </div>
                         </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-800">Fleet Management</h1>
-                            <p className="text-gray-500 text-sm">Manage and monitor all ambulances</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="text-center px-4 py-2 bg-green-50 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">{counts.AVAILABLE}</div>
-                            <div className="text-xs text-green-600">Available</div>
-                        </div>
-                        <div className="text-center px-4 py-2 bg-red-50 rounded-lg">
-                            <div className="text-2xl font-bold text-red-600">{counts.OCCUPIED}</div>
-                            <div className="text-xs text-red-600">Occupied</div>
-                        </div>
-                        <div className="text-center px-4 py-2 bg-yellow-50 rounded-lg">
-                            <div className="text-2xl font-bold text-yellow-600">{counts.MAINTENANCE}</div>
-                            <div className="text-xs text-yellow-600">Maintenance</div>
-                        </div>
-                    </div>
-                </div>
 
-                {/* Filter Buttons */}
-                <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500 mr-2">Filter:</span>
-                    {filterButtons.map(btn => (
+                        {/* Stats Cards */}
+                        <div className="flex flex-wrap gap-3">
+                            {[
+                                { label: "Available", count: counts.AVAILABLE, color: "emerald" },
+                                { label: "Occupied", count: counts.OCCUPIED, color: "red" },
+                                { label: "Maintenance", count: counts.MAINTENANCE, color: "amber" },
+                                { label: "On Break", count: counts.LUNCH_BREAK, color: "orange" },
+                            ].map(stat => (
+                                <div key={stat.label} className={`px-4 py-3 rounded-xl bg-${stat.color}-50 border border-${stat.color}-200`}>
+                                    <div className={`text-2xl font-bold text-${stat.color}-600`}>{stat.count}</div>
+                                    <div className={`text-xs text-${stat.color}-600`}>{stat.label}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Actions Row */}
+                    <div className="mt-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                        {/* Filter Pills */}
+                        <div className="flex flex-wrap gap-2">
+                            {(["ALL", "AVAILABLE", "OCCUPIED", "MAINTENANCE", "LUNCH_BREAK"] as const).map(status => {
+                                const config = getStatusConfig(status === "ALL" ? "AVAILABLE" : status);
+                                return (
+                                    <button
+                                        key={status}
+                                        onClick={() => setFilter(status)}
+                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                                            filter === status
+                                                ? status === "ALL"
+                                                    ? "bg-gray-800 text-white shadow-lg"
+                                                    : `${config.bg} text-white shadow-lg`
+                                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                        }`}
+                                    >
+                                        {status === "ALL" ? "All" : status === "LUNCH_BREAK" ? "On Break" : status.charAt(0) + status.slice(1).toLowerCase()}
+                                        <span className="ml-1 opacity-75">({counts[status]})</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Add Button */}
                         <button
-                            key={btn.value}
-                            onClick={() => setFilter(btn.value)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === btn.value
-                                ? `${btn.color} text-white shadow-md`
-                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                }`}
+                            onClick={() => setShowForm(!showForm)}
+                            className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                                showForm
+                                    ? "bg-gray-200 text-gray-700"
+                                    : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:shadow-xl hover:scale-105"
+                            }`}
                         >
-                            {btn.label} ({counts[btn.value]})
+                            {showForm ? "✕ Cancel" : "➕ Add Ambulance"}
                         </button>
-                    ))}
+                    </div>
+
+                    {/* Create Form */}
+                    {showForm && (
+                        <form onSubmit={createAmbulance} className="mt-6 pt-6 border-t border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-4">🚑 New Ambulance</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <input
+                                    type="text"
+                                    value={formData.matricule}
+                                    onChange={(e) => setFormData({ ...formData, matricule: e.target.value })}
+                                    placeholder="Matricule (e.g., AMB-005) *"
+                                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors"
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.driver}
+                                    onChange={(e) => setFormData({ ...formData, driver: e.target.value })}
+                                    placeholder="Driver Name *"
+                                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors"
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.medic}
+                                    onChange={(e) => setFormData({ ...formData, medic: e.target.value })}
+                                    placeholder="Medic Name *"
+                                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors"
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.equipment}
+                                    onChange={(e) => setFormData({ ...formData, equipment: e.target.value })}
+                                    placeholder="Equipment (comma-separated)"
+                                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors"
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.lat}
+                                    onChange={(e) => setFormData({ ...formData, lat: e.target.value })}
+                                    placeholder="Latitude"
+                                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors"
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.lng}
+                                    onChange={(e) => setFormData({ ...formData, lng: e.target.value })}
+                                    placeholder="Longitude"
+                                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors"
+                                />
+                            </div>
+                            <div className="mt-4 flex justify-end">
+                                <button
+                                    type="submit"
+                                    disabled={creating}
+                                    className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                                >
+                                    {creating ? "Creating..." : "✅ Create Ambulance"}
+                                </button>
+                            </div>
+                        </form>
+                    )}
                 </div>
             </div>
 
             {/* Ambulances Grid */}
-            {loading ? (
-                <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
-                </div>
-            ) : filteredAmbulances.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-                    <span className="text-4xl mb-3 block">🚑</span>
-                    <p className="text-gray-500">No ambulances found with status "{filter}"</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredAmbulances.map(ambulance => (
-                        <div
-                            key={ambulance.id}
-                            className={`bg-white rounded-xl shadow-lg p-5 border-l-4 transition-all hover:shadow-xl ${getStatusStyle(ambulance.status)}`}
-                        >
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-2xl">
-                                        🚑
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-lg text-gray-800">{ambulance.matricule}</div>
-                                        <div className="text-sm text-gray-500">ID: {ambulance.id}</div>
-                                    </div>
-                                </div>
-                                <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${getStatusStyle(ambulance.status)}`}>
-                                    {getStatusIcon(ambulance.status)} {ambulance.status}
-                                </div>
-                            </div>
+            <div className="max-w-7xl mx-auto">
+                {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                ) : filteredAmbulances.length === 0 ? (
+                    <div className="bg-white rounded-2xl shadow-xl p-16 text-center">
+                        <span className="text-6xl mb-4 block">🚑</span>
+                        <p className="text-xl text-gray-500">No ambulances found</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {filteredAmbulances.map(ambulance => {
+                            const config = getStatusConfig(ambulance.status);
+                            const isAssigned = isAssignedToActiveIncident(ambulance.id);
 
-                            <div className="space-y-3">
-                                {/* Crew */}
-                                <div className="bg-gray-50 rounded-lg p-3">
-                                    <div className="text-xs text-gray-500 mb-1">Crew</div>
-                                    <div className="flex items-center gap-4 text-sm">
-                                        <div className="flex items-center gap-1">
-                                            <span>🚗</span>
-                                            <span className="font-medium">{ambulance.group.driver}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <span>👨‍⚕️</span>
-                                            <span className="font-medium">{ambulance.group.medic}</span>
+                            return (
+                                <div
+                                    key={ambulance.id}
+                                    className={`bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all overflow-hidden border-l-4 ${config.border}`}
+                                >
+                                    {/* Header */}
+                                    <div className="p-5 bg-gradient-to-r from-gray-50 to-white">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-12 h-12 ${config.bg} rounded-xl flex items-center justify-center shadow-md`}>
+                                                    <span className="text-2xl">🚑</span>
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-lg text-gray-800">{ambulance.matricule}</h3>
+                                                    <span className={`text-sm ${config.text} font-medium`}>
+                                                        {config.icon} {ambulance.status === "LUNCH_BREAK" ? "On Break" : ambulance.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {isAssigned && (
+                                                <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                                                    On Mission
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Equipment */}
-                                <div>
-                                    <div className="text-xs text-gray-500 mb-1">Equipment</div>
-                                    <div className="flex flex-wrap gap-1">
-                                        {ambulance.equipment.map((item, index) => (
-                                            <span
-                                                key={index}
-                                                className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full"
-                                            >
-                                                {item}
-                                            </span>
-                                        ))}
+                                    {/* Content */}
+                                    <div className="p-5 space-y-4">
+                                        {/* Crew */}
+                                        <div className="bg-gray-50 rounded-xl p-3">
+                                            <div className="text-xs text-gray-500 mb-2 font-medium">CREW</div>
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-lg">🚗</span>
+                                                    <span className="font-medium text-gray-700">{ambulance.group.driver}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-lg">👨‍⚕️</span>
+                                                    <span className="font-medium text-gray-700">{ambulance.group.medic}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Equipment */}
+                                        {ambulance.equipment.length > 0 && (
+                                            <div>
+                                                <div className="text-xs text-gray-500 mb-2 font-medium">EQUIPMENT</div>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {ambulance.equipment.map((item, i) => (
+                                                        <span key={i} className="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded-lg font-medium">
+                                                            {item}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Location */}
+                                        <div className="text-xs text-gray-400 flex items-center gap-1">
+                                            📍 {ambulance.location.lat.toFixed(4)}, {ambulance.location.lng.toFixed(4)}
+                                        </div>
+
+                                        {/* Status Buttons */}
+                                        <div className="pt-3 border-t border-gray-100">
+                                            <div className="text-xs text-gray-500 mb-2 font-medium">CHANGE STATUS</div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {ambulance.status !== "AVAILABLE" && (
+                                                    <button
+                                                        onClick={() => updateAmbulanceStatus(ambulance.id, "AVAILABLE")}
+                                                        disabled={updating === ambulance.id}
+                                                        className="py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                                    >
+                                                        {updating === ambulance.id ? "..." : "🟢 Available"}
+                                                    </button>
+                                                )}
+                                                {ambulance.status !== "OCCUPIED" && (
+                                                    <button
+                                                        onClick={() => updateAmbulanceStatus(ambulance.id, "OCCUPIED")}
+                                                        disabled={updating === ambulance.id}
+                                                        className="py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                                    >
+                                                        {updating === ambulance.id ? "..." : "🔴 Occupied"}
+                                                    </button>
+                                                )}
+                                                {ambulance.status !== "MAINTENANCE" && (
+                                                    <button
+                                                        onClick={() => updateAmbulanceStatus(ambulance.id, "MAINTENANCE")}
+                                                        disabled={updating === ambulance.id}
+                                                        className="py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                                    >
+                                                        {updating === ambulance.id ? "..." : "🟡 Maintenance"}
+                                                    </button>
+                                                )}
+                                                {ambulance.status !== "LUNCH_BREAK" && (
+                                                    <button
+                                                        onClick={() => updateAmbulanceStatus(ambulance.id, "LUNCH_BREAK")}
+                                                        disabled={updating === ambulance.id}
+                                                        className="py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                                    >
+                                                        {updating === ambulance.id ? "..." : "🍴 Break"}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-
-                                {/* Location */}
-                                <div className="text-xs text-gray-400 pt-2 border-t">
-                                    📍 {ambulance.location.lat.toFixed(4)}, {ambulance.location.lng.toFixed(4)}
-                                </div>
-
-                                {/* Change Status */}
-                                <div className="pt-3 border-t">
-                                    <div className="text-xs text-gray-500 mb-2">Change Status:</div>
-                                    <div className="flex gap-2">
-                                        {ambulance.status !== "AVAILABLE" && (
-                                            <button
-                                                onClick={() => updateAmbulanceStatus(ambulance.id, "AVAILABLE")}
-                                                disabled={updating === ambulance.id}
-                                                className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
-                                            >
-                                                {updating === ambulance.id ? "..." : "🟢 Available"}
-                                            </button>
-                                        )}
-                                        {ambulance.status !== "OCCUPIED" && (
-                                            <button
-                                                onClick={() => updateAmbulanceStatus(ambulance.id, "OCCUPIED")}
-                                                disabled={updating === ambulance.id}
-                                                className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
-                                            >
-                                                {updating === ambulance.id ? "..." : "🔴 Occupied"}
-                                            </button>
-                                        )}
-                                        {ambulance.status !== "MAINTENANCE" && (
-                                            <button
-                                                onClick={() => updateAmbulanceStatus(ambulance.id, "MAINTENANCE")}
-                                                disabled={updating === ambulance.id}
-                                                className="flex-1 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
-                                            >
-                                                {updating === ambulance.id ? "..." : "🟡 Maintenance"}
-                                            </button>
-                                        )}
-                                        {ambulance.status !== "LUNCH_BREAK" && (
-                                            <button
-                                                onClick={() => updateAmbulanceStatus(ambulance.id, "LUNCH_BREAK")}
-                                                disabled={updating === ambulance.id}
-                                                className="flex-1 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
-                                            >
-                                                {updating === ambulance.id ? "..." : "🍴 Pause"}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
