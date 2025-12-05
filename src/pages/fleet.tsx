@@ -21,6 +21,7 @@ export default function Fleet() {
     const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<StatusFilter>("ALL");
+    const [updating, setUpdating] = useState<string | number | null>(null);
 
     const fetchAmbulances = async () => {
         try {
@@ -37,6 +38,23 @@ export default function Fleet() {
     useEffect(() => {
         fetchAmbulances();
     }, []);
+
+    // Update ambulance status
+    const updateAmbulanceStatus = async (ambulanceId: string | number, newStatus: Ambulance["status"]) => {
+        setUpdating(ambulanceId);
+        try {
+            await fetch(`http://localhost:5000/ambulances/${ambulanceId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStatus }),
+            });
+            await fetchAmbulances();
+        } catch (error) {
+            console.error("Error updating ambulance status:", error);
+        } finally {
+            setUpdating(null);
+        }
+    };
 
     // Filter ambulances based on status
     const filteredAmbulances = ambulances.filter(amb =>
@@ -114,8 +132,8 @@ export default function Fleet() {
                             key={btn.value}
                             onClick={() => setFilter(btn.value)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === btn.value
-                                    ? `${btn.color} text-white shadow-md`
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                ? `${btn.color} text-white shadow-md`
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                 }`}
                         >
                             {btn.label} ({counts[btn.value]})
@@ -190,6 +208,40 @@ export default function Fleet() {
                                 {/* Location */}
                                 <div className="text-xs text-gray-400 pt-2 border-t">
                                     📍 {ambulance.location.lat.toFixed(4)}, {ambulance.location.lng.toFixed(4)}
+                                </div>
+
+                                {/* Change Status */}
+                                <div className="pt-3 border-t">
+                                    <div className="text-xs text-gray-500 mb-2">Change Status:</div>
+                                    <div className="flex gap-2">
+                                        {ambulance.status !== "AVAILABLE" && (
+                                            <button
+                                                onClick={() => updateAmbulanceStatus(ambulance.id, "AVAILABLE")}
+                                                disabled={updating === ambulance.id}
+                                                className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
+                                            >
+                                                {updating === ambulance.id ? "..." : "🟢 Available"}
+                                            </button>
+                                        )}
+                                        {ambulance.status !== "OCCUPIED" && (
+                                            <button
+                                                onClick={() => updateAmbulanceStatus(ambulance.id, "OCCUPIED")}
+                                                disabled={updating === ambulance.id}
+                                                className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
+                                            >
+                                                {updating === ambulance.id ? "..." : "🔴 Occupied"}
+                                            </button>
+                                        )}
+                                        {ambulance.status !== "MAINTENANCE" && (
+                                            <button
+                                                onClick={() => updateAmbulanceStatus(ambulance.id, "MAINTENANCE")}
+                                                disabled={updating === ambulance.id}
+                                                className="flex-1 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
+                                            >
+                                                {updating === ambulance.id ? "..." : "🟡 Maintenance"}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

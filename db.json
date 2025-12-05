@@ -147,12 +147,12 @@
         "lng": -7.5898
       },
       "gravity": "CRITICAL",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "patient": {
         "name": "Unknown",
         "age": null
       },
-      "AmbulanceId": null,
+      "AmbulanceId": "1",
       "createdAt": "2025-12-05T15:21:36.648Z"
     }
   ],
