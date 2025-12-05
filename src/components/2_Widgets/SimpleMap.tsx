@@ -117,31 +117,66 @@ export default function SimpleMap() {
     const [incidents, setIncidents] = useState<Incident[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
+    const [assigning, setAssigning] = useState<string | number | null>(null);
 
     // Casablanca center
     const center: L.LatLngExpression = [33.5731, -7.5898];
 
     // Fetch data from JSON server
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [ambulancesRes, incidentsRes] = await Promise.all([
-                    fetch("http://localhost:5000/ambulances"),
-                    fetch("http://localhost:5000/incidents")
-                ]);
-                const ambulancesData = await ambulancesRes.json();
-                const incidentsData = await incidentsRes.json();
-                setAmbulances(ambulancesData);
-                setIncidents(incidentsData);
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const fetchData = async () => {
+        try {
+            const [ambulancesRes, incidentsRes] = await Promise.all([
+                fetch("http://localhost:5000/ambulances"),
+                fetch("http://localhost:5000/incidents")
+            ]);
+            const ambulancesData = await ambulancesRes.json();
+            const incidentsData = await incidentsRes.json();
+            setAmbulances(ambulancesData);
+            setIncidents(incidentsData);
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchData();
     }, []);
+
+    // Assign ambulance to incident
+    const assignAmbulance = async (ambulanceId: string | number) => {
+        if (!selectedIncident) return;
+
+        setAssigning(ambulanceId);
+
+        try {
+            // Update incident with ambulance ID and change status to IN_PROGRESS
+            await fetch(`http://localhost:5000/incidents/${selectedIncident.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    AmbulanceId: ambulanceId,
+                    status: "IN_PROGRESS"
+                }),
+            });
+
+            // Update ambulance status to OCCUPIED
+            await fetch(`http://localhost:5000/ambulances/${ambulanceId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "OCCUPIED" }),
+            });
+
+            // Refresh data and close panel
+            await fetchData();
+            setSelectedIncident(null);
+        } catch (error) {
+            console.error("Error assigning ambulance:", error);
+        } finally {
+            setAssigning(null);
+        }
+    };
 
     const getGravityLabel = (gravity: string) => {
         switch (gravity) {
@@ -395,33 +430,55 @@ export default function SimpleMap() {
                         <div className="text-sm text-gray-600">📍 {selectedIncident.address}</div>
                     </div>
 
-                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    <div className="space-y-2 max-h-[250px] overflow-y-auto">
                         {getAmbulanceDistances().map((amb, index) => (
                             <div
                                 key={amb.id}
-                                className={`flex items-center justify-between p-2 rounded-lg ${index === 0 ? "bg-green-50 border border-green-200" : "bg-gray-50"
+                                className={`flex items-center justify-between p-2 rounded-lg ${index === 0 && amb.status === "AVAILABLE" ? "bg-green-50 border border-green-200" : "bg-gray-50"
                                     }`}
                             >
                                 <div className="flex items-center gap-2">
                                     <span className={`w-2 h-2 rounded-full ${amb.status === "AVAILABLE" ? "bg-green-500" :
-                                            amb.status === "OCCUPIED" ? "bg-red-500" : "bg-yellow-500"
+                                        amb.status === "OCCUPIED" ? "bg-red-500" : "bg-yellow-500"
                                         }`}></span>
                                     <div>
                                         <div className="font-medium text-sm">🚑 {amb.matricule}</div>
                                         <div className="text-xs text-gray-500">{amb.status}</div>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <div className={`font-bold ${index === 0 ? "text-green-600" : "text-gray-700"}`}>
-                                        {amb.distance.toFixed(2)} km
+                                <div className="flex items-center gap-2">
+                                    <div className="text-right">
+                                        <div className={`font-bold ${index === 0 && amb.status === "AVAILABLE" ? "text-green-600" : "text-gray-700"}`}>
+                                            {amb.distance.toFixed(2)} km
+                                        </div>
+                                        {index === 0 && amb.status === "AVAILABLE" && (
+                                            <div className="text-xs text-green-600">Closest</div>
+                                        )}
                                     </div>
-                                    {index === 0 && (
-                                        <div className="text-xs text-green-600">Closest</div>
+                                    {/* Assign button - only for PENDING incidents and AVAILABLE ambulances */}
+                                    {selectedIncident.status === "PENDING" && amb.status === "AVAILABLE" && (
+                                        <button
+                                            onClick={() => assignAmbulance(amb.id)}
+                                            disabled={assigning === amb.id}
+                                            className={`px-3 py-1 rounded text-xs font-medium transition-all ${assigning === amb.id
+                                                    ? "bg-gray-300 text-gray-500 cursor-wait"
+                                                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                                                }`}
+                                        >
+                                            {assigning === amb.id ? "..." : "Assign"}
+                                        </button>
                                     )}
                                 </div>
                             </div>
                         ))}
                     </div>
+
+                    {/* Already assigned message */}
+                    {selectedIncident.AmbulanceId && (
+                        <div className="mt-3 pt-3 border-t text-center text-sm text-purple-600">
+                            ✅ Already assigned to AMB-{String(selectedIncident.AmbulanceId).padStart(3, '0')}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

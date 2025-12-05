@@ -72,7 +72,7 @@
     {
       "id": "3",
       "matricule": "AMB-003",
-      "status": "AVAILABLE",
+      "status": "OCCUPIED",
       "location": {
         "lat": 33.5,
         "lng": -7.6
@@ -130,12 +130,12 @@
         "lng": -7.577298484391981
       },
       "gravity": "HIGH",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "patient": {
         "name": "Unknown",
         "age": null
       },
-      "AmbulanceId": null,
+      "AmbulanceId": "3",
       "createdAt": "2025-12-05T15:19:35.568Z"
     },
     {
