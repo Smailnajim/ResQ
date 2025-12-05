@@ -72,7 +72,7 @@
     {
       "id": "3",
       "matricule": "AMB-003",
-      "status": "OCCUPIED",
+      "status": "AVAILABLE",
       "location": {
         "lat": 33.5,
         "lng": -7.6
@@ -205,6 +205,23 @@
       },
       "AmbulanceId": "3",
       "createdAt": "2025-12-05T17:01:09.798Z"
+    },
+    {
+      "id": "b4de",
+      "type": "Fire",
+      "address": "ddddddddddd",
+      "location": {
+        "lat": 33.57,
+        "lng": -7.5893
+      },
+      "gravity": "MEDIUM",
+      "status": "CANCELLED",
+      "patient": {
+        "name": "Unknown",
+        "age": null
+      },
+      "AmbulanceId": "1",
+      "createdAt": "2025-12-05T17:06:46.730Z"
     }
   ],
   "maintenance": [

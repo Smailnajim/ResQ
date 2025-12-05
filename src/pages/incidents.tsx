@@ -101,8 +101,8 @@ export default function Incidents() {
                 body: JSON.stringify({ status: newStatus }),
             });
 
-            // If resolved and has ambulance assigned, set ambulance to AVAILABLE
-            if (newStatus === "RESOLVED" && incident.AmbulanceId) {
+            // If resolved or cancelled and has ambulance assigned, set ambulance to AVAILABLE
+            if ((newStatus === "RESOLVED" || newStatus === "CANCELLED") && incident.AmbulanceId) {
                 await fetch(`http://localhost:5000/ambulances/${incident.AmbulanceId}`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
