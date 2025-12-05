@@ -39,7 +39,7 @@
     {
       "id": "1",
       "matricule": "AMB-001",
-      "status": "OCCUPIED",
+      "status": "AVAILABLE",
       "location": {
         "lat": 33.5898,
         "lng": -7.5898
@@ -118,35 +118,22 @@
       ]
     },
     {
-      "id": "d90a",
-      "matricule": "jjjjj",
+      "id": "fa60",
+      "matricule": "sdvdfsdvc",
       "status": "AVAILABLE",
       "location": {
         "lat": 33.5731,
         "lng": -7.5898
       },
       "group": {
-        "driver": "ddd",
-        "medic": "ddd"
+        "driver": "sdvcsds",
+        "medic": "sdfcsdcd"
       },
       "equipment": [
-        "1-6-2-d"
-      ]
-    },
-    {
-      "id": "67b3",
-      "matricule": "sdsdd",
-      "status": "AVAILABLE",
-      "location": {
-        "lat": 33.5731,
-        "lng": -7.5898
-      },
-      "group": {
-        "driver": "sddsd",
-        "medic": "dsdsds"
-      },
-      "equipment": [
-        "dsds - dffd - dsfer"
+        "sdqc",
+        "sdsq",
+        "sdfsdq",
+        "sdfcze"
       ]
     }
   ],
@@ -350,13 +337,14 @@
         "lng": -7.5823
       },
       "gravity": "CRITICAL",
-      "status": "IN_PROGRESS",
+      "status": "RESOLVED",
       "patient": {
         "name": "Unknown",
         "age": null
       },
       "AmbulanceId": "1",
-      "createdAt": "2025-12-05T23:06:17.281Z"
+      "createdAt": "2025-12-05T23:06:17.281Z",
+      "closedAt": "2025-12-05T23:22:17.503Z"
     }
   ],
   "maintenance": [

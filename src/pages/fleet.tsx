@@ -92,6 +92,31 @@ export default function Fleet() {
         }
     };
 
+    const deleteAmbulance = async (ambulanceId: string | number, matricule: string) => {
+        if (isAssignedToActiveIncident(ambulanceId)) {
+            setError("Cannot delete: Ambulance is assigned to an active incident");
+            setTimeout(() => setError(null), 4000);
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to delete ${matricule}?`)) {
+            return;
+        }
+
+        setUpdating(ambulanceId);
+        try {
+            await fetch(`http://localhost:5000/ambulances/${ambulanceId}`, {
+                method: "DELETE",
+            });
+            await fetchData();
+        } catch (error) {
+            console.error("Error deleting ambulance:", error);
+            setError("Failed to delete ambulance");
+        } finally {
+            setUpdating(null);
+        }
+    };
+
     const createAmbulance = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.matricule || !formData.driver || !formData.medic) {
@@ -200,13 +225,12 @@ export default function Fleet() {
                                     <button
                                         key={status}
                                         onClick={() => setFilter(status)}
-                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                                            filter === status
-                                                ? status === "ALL"
-                                                    ? "bg-gray-800 text-white shadow-lg"
-                                                    : `${config.bg} text-white shadow-lg`
-                                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                        }`}
+                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filter === status
+                                            ? status === "ALL"
+                                                ? "bg-gray-800 text-white shadow-lg"
+                                                : `${config.bg} text-white shadow-lg`
+                                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                            }`}
                                     >
                                         {status === "ALL" ? "All" : status === "LUNCH_BREAK" ? "On Break" : status.charAt(0) + status.slice(1).toLowerCase()}
                                         <span className="ml-1 opacity-75">({counts[status]})</span>
@@ -218,11 +242,10 @@ export default function Fleet() {
                         {/* Add Button */}
                         <button
                             onClick={() => setShowForm(!showForm)}
-                            className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
-                                showForm
-                                    ? "bg-gray-200 text-gray-700"
-                                    : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:shadow-xl hover:scale-105"
-                            }`}
+                            className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${showForm
+                                ? "bg-gray-200 text-gray-700"
+                                : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:shadow-xl hover:scale-105"
+                                }`}
                         >
                             {showForm ? "✕ Cancel" : "➕ Add Ambulance"}
                         </button>
@@ -329,11 +352,21 @@ export default function Fleet() {
                                                     </span>
                                                 </div>
                                             </div>
-                                            {isAssigned && (
-                                                <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
-                                                    On Mission
-                                                </span>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                {isAssigned && (
+                                                    <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                                                        On Mission
+                                                    </span>
+                                                )}
+                                                <button
+                                                    onClick={() => deleteAmbulance(ambulance.id, ambulance.matricule)}
+                                                    disabled={updating === ambulance.id}
+                                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                                    title="Delete ambulance"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
