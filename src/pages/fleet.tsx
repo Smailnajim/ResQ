@@ -15,40 +15,70 @@ interface Ambulance {
     equipment: string[];
 }
 
+interface Incident {
+    id: number | string;
+    status: string;
+    AmbulanceId: number | string | null;
+}
+
 type StatusFilter = "ALL" | "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
 
 export default function Fleet() {
     const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
+    const [incidents, setIncidents] = useState<Incident[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<StatusFilter>("ALL");
     const [updating, setUpdating] = useState<string | number | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    const fetchAmbulances = async () => {
+    const fetchData = async () => {
         try {
-            const response = await fetch("http://localhost:5000/ambulances");
-            const data = await response.json();
-            setAmbulances(data);
+            const [ambulancesRes, incidentsRes] = await Promise.all([
+                fetch("http://localhost:5000/ambulances"),
+                fetch("http://localhost:5000/incidents")
+            ]);
+            const ambulancesData = await ambulancesRes.json();
+            const incidentsData = await incidentsRes.json();
+            setAmbulances(ambulancesData);
+            setIncidents(incidentsData);
         } catch (error) {
-            console.error("Error fetching ambulances:", error);
+            console.error("Error fetching data:", error);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchAmbulances();
+        fetchData();
     }, []);
+
+    // Check if ambulance is assigned to an active incident
+    const isAssignedToActiveIncident = (ambulanceId: string | number): boolean => {
+        return incidents.some(
+            incident =>
+                String(incident.AmbulanceId) === String(ambulanceId) &&
+                (incident.status === "IN_PROGRESS" || incident.status === "PENDING")
+        );
+    };
 
     // Update ambulance status
     const updateAmbulanceStatus = async (ambulanceId: string | number, newStatus: Ambulance["status"]) => {
+        // Check if assigned to active incident
+        if (isAssignedToActiveIncident(ambulanceId)) {
+            setError(`Cannot change status: This ambulance is assigned to an active incident`);
+            setTimeout(() => setError(null), 4000);
+            return;
+        }
+
         setUpdating(ambulanceId);
+        setError(null);
         try {
             await fetch(`http://localhost:5000/ambulances/${ambulanceId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ status: newStatus }),
             });
-            await fetchAmbulances();
+            await fetchData();
         } catch (error) {
             console.error("Error updating ambulance status:", error);
         } finally {
@@ -96,6 +126,20 @@ export default function Fleet() {
 
     return (
         <div className="space-y-6">
+            {/* Error Message */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2 animate-pulse">
+                    <span className="text-xl">⚠️</span>
+                    <span className="font-medium">{error}</span>
+                    <button
+                        onClick={() => setError(null)}
+                        className="ml-auto text-red-500 hover:text-red-700 font-bold"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
             {/* Header */}
             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
                 <div className="flex items-center justify-between mb-6">
