@@ -128,6 +128,39 @@ export default function Incidents() {
         }
     };
 
+    // Delete incident
+    const [deleting, setDeleting] = useState<string | number | null>(null);
+
+    const deleteIncident = async (incident: Incident) => {
+        if (!confirm(`Are you sure you want to delete this incident at ${incident.address}?`)) {
+            return;
+        }
+
+        setDeleting(incident.id);
+        try {
+            // If incident has ambulance and is active, free the ambulance first
+            if (incident.AmbulanceId && (incident.status === "IN_PROGRESS" || incident.status === "PENDING")) {
+                await fetch(`http://localhost:5000/ambulances/${incident.AmbulanceId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "AVAILABLE" }),
+                });
+            }
+
+            // Delete the incident
+            await fetch(`http://localhost:5000/incidents/${incident.id}`, {
+                method: "DELETE",
+            });
+
+            await fetchIncidents();
+            await fetchAmbulances();
+        } catch (error) {
+            console.error("Error deleting incident:", error);
+        } finally {
+            setDeleting(null);
+        }
+    };
+
     const getGravityColor = (gravity: string) => {
         switch (gravity) {
             case "CRITICAL": return "bg-red-100 text-red-800 border-red-200";
@@ -323,10 +356,18 @@ export default function Incidents() {
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-right flex flex-col items-end gap-2">
                                             <span className={`px-2 py-1 rounded-full text-xs font-bold ${getGravityColor(incident.gravity)}`}>
                                                 {incident.gravity}
                                             </span>
+                                            <button
+                                                onClick={() => deleteIncident(incident)}
+                                                disabled={deleting === incident.id}
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                                title="Delete incident"
+                                            >
+                                                {deleting === incident.id ? "..." : "🗑️"}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
