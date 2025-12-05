@@ -3,6 +3,7 @@ import Index from "./components/4_layouts";
 import CalendarDemo from "./components/3_Modules/Test";
 import Map from "./pages/map";
 import Incidents from "./pages/incidents";
+import Fleet from "./pages/fleet";
 
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
           <Route index element={<CalendarDemo />} />
           <Route path="map" element={<Map />} />
           <Route path="incidents" element={<Incidents />} />
+          <Route path="fleet" element={<Fleet />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
       </Routes>
