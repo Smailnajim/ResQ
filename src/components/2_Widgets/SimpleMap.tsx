@@ -6,7 +6,7 @@ import L from "leaflet";
 
 // Ambulance type definition
 interface Ambulance {
-    id: number;
+    id: number | string;
     matricule: string;
     status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
     location: {
@@ -18,6 +18,24 @@ interface Ambulance {
         medic: string;
     };
     equipment: string[];
+}
+
+// Incident type definition
+interface Incident {
+    id: number | string;
+    type: string;
+    address: string;
+    location: {
+        lat: number;
+        lng: number;
+    };
+    gravity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+    status: "PENDING" | "IN_PROGRESS" | "RESOLVED" | "CANCELLED";
+    patient: {
+        name: string;
+        age: number | null;
+    };
+    AmbulanceId: number | null;
 }
 
 // Custom ambulance icon based on status
@@ -54,34 +72,106 @@ const createAmbulanceIcon = (status: string) => {
     });
 };
 
+// Custom incident icon based on gravity
+const createIncidentIcon = (gravity: string, status: string) => {
+    const colorMap: { [key: string]: string } = {
+        CRITICAL: "#dc2626",
+        HIGH: "#ea580c",
+        MEDIUM: "#ca8a04",
+        LOW: "#16a34a",
+    };
+    const color = colorMap[gravity] || "#6b7280";
+    const isResolved = status === "RESOLVED" || status === "CANCELLED";
+
+    return L.divIcon({
+        className: "custom-incident-marker",
+        html: `
+            <div style="
+                background: ${isResolved ? "#9ca3af" : color};
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 3px solid white;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                ${!isResolved && status === "PENDING" ? "animation: pulse 2s infinite;" : ""}
+            ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -18],
+    });
+};
+
 export default function SimpleMap() {
     const mapRef = useRef<LeafletMap | null>(null);
     const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
+    const [incidents, setIncidents] = useState<Incident[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Casablanca center (where your ambulances are located)
+    // Casablanca center
     const center: L.LatLngExpression = [33.5731, -7.5898];
 
-    // Fetch ambulances from JSON server
+    // Fetch data from JSON server
     useEffect(() => {
-        const fetchAmbulances = async () => {
+        const fetchData = async () => {
             try {
-                const response = await fetch("http://localhost:5000/ambulances");
-                const data = await response.json();
-                console.error("data", data);
-                setAmbulances(data);
+                const [ambulancesRes, incidentsRes] = await Promise.all([
+                    fetch("http://localhost:5000/ambulances"),
+                    fetch("http://localhost:5000/incidents")
+                ]);
+                const ambulancesData = await ambulancesRes.json();
+                const incidentsData = await incidentsRes.json();
+                setAmbulances(ambulancesData);
+                setIncidents(incidentsData);
             } catch (error) {
-                console.error("Error fetching ambulances:", error);
+                console.error("Error fetching data:", error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchAmbulances();
+        fetchData();
     }, []);
+
+    const getGravityLabel = (gravity: string) => {
+        switch (gravity) {
+            case "CRITICAL": return "🔴 Critical";
+            case "HIGH": return "🟠 High";
+            case "MEDIUM": return "🟡 Medium";
+            case "LOW": return "🟢 Low";
+            default: return gravity;
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "PENDING": return "bg-blue-100 text-blue-800";
+            case "IN_PROGRESS": return "bg-purple-100 text-purple-800";
+            case "RESOLVED": return "bg-green-100 text-green-800";
+            case "CANCELLED": return "bg-gray-100 text-gray-800";
+            default: return "bg-gray-100 text-gray-800";
+        }
+    };
 
     return (
         <div className="w-full h-[calc(100vh-140px)] rounded-xl overflow-hidden shadow-lg border border-gray-200 relative">
+            {/* Pulse animation for pending incidents */}
+            <style>{`
+                @keyframes pulse {
+                    0%, 100% { transform: scale(1); opacity: 1; }
+                    50% { transform: scale(1.1); opacity: 0.8; }
+                }
+            `}</style>
+
             {loading && (
                 <div className="absolute inset-0 bg-white/80 z-[1000] flex items-center justify-center">
                     <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
@@ -98,9 +188,42 @@ export default function SimpleMap() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
+                {/* Incident Markers */}
+                {incidents.map((incident) => (
+                    <Marker
+                        key={`incident-${incident.id}`}
+                        position={[incident.location.lat, incident.location.lng]}
+                        icon={createIncidentIcon(incident.gravity, incident.status)}
+                    >
+                        <Popup>
+                            <div className="min-w-[220px]">
+                                <div className="font-bold text-lg mb-2 flex items-center gap-2">
+                                    🚨 {incident.type}
+                                </div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(incident.status)}`}>
+                                        {incident.status}
+                                    </span>
+                                    <span className="text-xs font-medium">
+                                        {getGravityLabel(incident.gravity)}
+                                    </span>
+                                </div>
+                                <div className="text-sm space-y-1">
+                                    <p><strong>📍 Address:</strong> {incident.address}</p>
+                                    <p><strong>👤 Patient:</strong> {incident.patient.name} {incident.patient.age ? `(${incident.patient.age} yrs)` : ""}</p>
+                                    {incident.AmbulanceId && (
+                                        <p className="text-blue-600"><strong>🚑 Ambulance:</strong> AMB-{String(incident.AmbulanceId).padStart(3, '0')}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
+
+                {/* Ambulance Markers */}
                 {ambulances.map((ambulance) => (
                     <Marker
-                        key={ambulance.id}
+                        key={`ambulance-${ambulance.id}`}
                         position={[ambulance.location.lat, ambulance.location.lng]}
                         icon={createAmbulanceIcon(ambulance.status)}
                     >
@@ -110,10 +233,10 @@ export default function SimpleMap() {
                                     🚑 {ambulance.matricule}
                                 </div>
                                 <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-2 ${ambulance.status === "AVAILABLE"
-                                        ? "bg-green-100 text-green-800"
-                                        : ambulance.status === "OCCUPIED"
-                                            ? "bg-red-100 text-red-800"
-                                            : "bg-yellow-100 text-yellow-800"
+                                    ? "bg-green-100 text-green-800"
+                                    : ambulance.status === "OCCUPIED"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-yellow-100 text-yellow-800"
                                     }`}>
                                     {ambulance.status}
                                 </div>
@@ -130,8 +253,8 @@ export default function SimpleMap() {
 
             {/* Legend */}
             <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 z-[1000]">
-                <div className="text-sm font-semibold mb-2">Ambulances</div>
-                <div className="space-y-1 text-xs">
+                <div className="text-sm font-semibold mb-2">🚑 Ambulances</div>
+                <div className="space-y-1 text-xs mb-3">
                     <div className="flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-green-500"></span>
                         <span>Available</span>
@@ -145,9 +268,44 @@ export default function SimpleMap() {
                         <span>Maintenance</span>
                     </div>
                 </div>
+                <div className="text-sm font-semibold mb-2 border-t pt-2">🚨 Incidents</div>
+                <div className="space-y-1 text-xs">
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded bg-red-600"></span>
+                        <span>Critical</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded bg-orange-500"></span>
+                        <span>High</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded bg-yellow-600"></span>
+                        <span>Medium</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded bg-green-600"></span>
+                        <span>Low</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Stats */}
+            <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-3 z-[1000]">
+                <div className="flex items-center gap-4 text-sm">
+                    <div className="text-center">
+                        <div className="font-bold text-blue-600">{incidents.filter(i => i.status === "PENDING").length}</div>
+                        <div className="text-xs text-gray-500">Pending</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="font-bold text-purple-600">{incidents.filter(i => i.status === "IN_PROGRESS").length}</div>
+                        <div className="text-xs text-gray-500">In Progress</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="font-bold text-green-600">{ambulances.filter(a => a.status === "AVAILABLE").length}</div>
+                        <div className="text-xs text-gray-500">Available 🚑</div>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
-
-
