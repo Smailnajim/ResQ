@@ -8,7 +8,7 @@ import L from "leaflet";
 interface Ambulance {
     id: number | string;
     matricule: string;
-    status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
+    status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE" | "LUNCH_BREAK";
     location: {
         lat: number;
         lng: number;
@@ -40,7 +40,13 @@ interface Incident {
 
 // Custom ambulance icon based on status
 const createAmbulanceIcon = (status: string) => {
-    const color = status === "AVAILABLE" ? "#22c55e" : status === "OCCUPIED" ? "#ef4444" : "#f59e0b";
+    const colorMap: { [key: string]: string } = {
+        AVAILABLE: "#22c55e",
+        OCCUPIED: "#ef4444",
+        MAINTENANCE: "#f59e0b",
+        LUNCH_BREAK: "#f97316"
+    };
+    const color = colorMap[status] || "#6b7280";
 
     return L.divIcon({
         className: "custom-ambulance-marker",
@@ -364,6 +370,10 @@ export default function SimpleMap() {
                     <div className="flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
                         <span>Maintenance</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                        <span>Pause déjeuner</span>
                     </div>
                 </div>
                 <div className="text-sm font-semibold mb-2 border-t pt-2">🚨 Incidents</div>

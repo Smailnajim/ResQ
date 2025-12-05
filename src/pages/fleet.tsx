@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 interface Ambulance {
     id: number | string;
     matricule: string;
-    status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
+    status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE" | "LUNCH_BREAK";
     location: {
         lat: number;
         lng: number;
@@ -21,7 +21,7 @@ interface Incident {
     AmbulanceId: number | string | null;
 }
 
-type StatusFilter = "ALL" | "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
+type StatusFilter = "ALL" | "AVAILABLE" | "OCCUPIED" | "MAINTENANCE" | "LUNCH_BREAK";
 
 export default function Fleet() {
     const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
@@ -97,6 +97,7 @@ export default function Fleet() {
         AVAILABLE: ambulances.filter(a => a.status === "AVAILABLE").length,
         OCCUPIED: ambulances.filter(a => a.status === "OCCUPIED").length,
         MAINTENANCE: ambulances.filter(a => a.status === "MAINTENANCE").length,
+        LUNCH_BREAK: ambulances.filter(a => a.status === "LUNCH_BREAK").length,
     };
 
     const getStatusStyle = (status: string) => {
@@ -104,6 +105,7 @@ export default function Fleet() {
             case "AVAILABLE": return "bg-green-100 text-green-800 border-green-200";
             case "OCCUPIED": return "bg-red-100 text-red-800 border-red-200";
             case "MAINTENANCE": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+            case "LUNCH_BREAK": return "bg-orange-100 text-orange-800 border-orange-200";
             default: return "bg-gray-100 text-gray-800 border-gray-200";
         }
     };
@@ -113,6 +115,7 @@ export default function Fleet() {
             case "AVAILABLE": return "🟢";
             case "OCCUPIED": return "🔴";
             case "MAINTENANCE": return "🟡";
+            case "LUNCH_BREAK": return "🍴";
             default: return "⚪";
         }
     };
@@ -122,6 +125,7 @@ export default function Fleet() {
         { value: "AVAILABLE", label: "Available", color: "bg-green-600" },
         { value: "OCCUPIED", label: "Occupied", color: "bg-red-600" },
         { value: "MAINTENANCE", label: "Maintenance", color: "bg-yellow-600" },
+        { value: "LUNCH_BREAK", label: "Pause déjeuner", color: "bg-orange-600" },
     ];
 
     return (
@@ -283,6 +287,15 @@ export default function Fleet() {
                                                 className="flex-1 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
                                             >
                                                 {updating === ambulance.id ? "..." : "🟡 Maintenance"}
+                                            </button>
+                                        )}
+                                        {ambulance.status !== "LUNCH_BREAK" && (
+                                            <button
+                                                onClick={() => updateAmbulanceStatus(ambulance.id, "LUNCH_BREAK")}
+                                                disabled={updating === ambulance.id}
+                                                className="flex-1 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
+                                            >
+                                                {updating === ambulance.id ? "..." : "🍴 Pause"}
                                             </button>
                                         )}
                                     </div>
