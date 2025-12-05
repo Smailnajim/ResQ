@@ -1,10 +1,21 @@
 import { useEffect, useState } from "react";
 import IncidentForm from "@/components/3_Modules/IncidentForm";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import type { Incident } from "@/interfaces/Incident";
+
+interface Ambulance {
+    id: number;
+    matricule: string;
+    status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
+}
 
 export default function Incidents() {
     const [incidents, setIncidents] = useState<Incident[]>([]);
+    const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
     const [loading, setLoading] = useState(true);
+    const [assigningId, setAssigningId] = useState<number | null>(null);
+    const [selectedAmbulance, setSelectedAmbulance] = useState<{ [key: number]: string }>({});
 
     const fetchIncidents = async () => {
         try {
@@ -18,9 +29,63 @@ export default function Incidents() {
         }
     };
 
+    const fetchAmbulances = async () => {
+        try {
+            const response = await fetch("http://localhost:5000/ambulances");
+            const data = await response.json();
+            setAmbulances(data);
+        } catch (error) {
+            console.error("Error fetching ambulances:", error);
+        }
+    };
+
     useEffect(() => {
         fetchIncidents();
+        fetchAmbulances();
     }, []);
+
+    const availableAmbulances = ambulances.filter(amb => amb.status === "AVAILABLE");
+
+    const assignAmbulance = async (incidentId: number) => {
+        const ambulanceId = selectedAmbulance[incidentId];
+        if (!ambulanceId) return;
+
+        setAssigningId(incidentId);
+
+        try {
+            // Update incident with ambulance ID and change status to IN_PROGRESS
+            await fetch(`http://localhost:5000/incidents/${incidentId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    AmbulanceId: parseInt(ambulanceId),
+                    status: "IN_PROGRESS"
+                }),
+            });
+
+            // Update ambulance status to OCCUPIED
+            await fetch(`http://localhost:5000/ambulances/${ambulanceId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "OCCUPIED" }),
+            });
+
+            // Refresh data
+            await fetchIncidents();
+            await fetchAmbulances();
+
+            // Clear selection
+            setSelectedAmbulance(prev => {
+                const updated = { ...prev };
+                delete updated[incidentId];
+                return updated;
+            });
+        } catch (error) {
+            console.error("Error assigning ambulance:", error);
+        } finally {
+            setAssigningId(null);
+        }
+    };
 
     const getGravityColor = (gravity: string) => {
         switch (gravity) {
@@ -59,9 +124,14 @@ export default function Incidents() {
                             </div>
                             <h2 className="text-xl font-bold text-gray-800">Incidents List</h2>
                         </div>
-                        <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
-                            {incidents.length} total
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="bg-green-100 text-green-600 px-2 py-1 rounded-full text-xs font-medium">
+                                🚑 {availableAmbulances.length} available
+                            </span>
+                            <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
+                                {incidents.length} total
+                            </span>
+                        </div>
                     </div>
 
                     {loading ? (
@@ -103,6 +173,42 @@ export default function Incidents() {
                                                     <span className="text-blue-600">🚑 AMB-{String(incident.AmbulanceId).padStart(3, '0')}</span>
                                                 )}
                                             </div>
+
+                                            {/* Assign Ambulance Section - Only for PENDING incidents */}
+                                            {incident.status === "PENDING" && !incident.AmbulanceId && (
+                                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                                    <div className="flex items-center gap-2">
+                                                        <Select
+                                                            value={selectedAmbulance[incident.id] || ""}
+                                                            onChange={(e) => setSelectedAmbulance(prev => ({
+                                                                ...prev,
+                                                                [incident.id]: e.target.value
+                                                            }))}
+                                                            options={[
+                                                                { value: "", label: "Select ambulance..." },
+                                                                ...availableAmbulances.map(amb => ({
+                                                                    value: String(amb.id),
+                                                                    label: `🚑 ${amb.matricule}`
+                                                                }))
+                                                            ]}
+                                                            className="flex-1 h-8 text-sm"
+                                                        />
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => assignAmbulance(incident.id)}
+                                                            disabled={!selectedAmbulance[incident.id] || assigningId === incident.id}
+                                                            className="bg-blue-600 hover:bg-blue-700 text-white h-8"
+                                                        >
+                                                            {assigningId === incident.id ? "..." : "Assign"}
+                                                        </Button>
+                                                    </div>
+                                                    {availableAmbulances.length === 0 && (
+                                                        <p className="text-xs text-orange-600 mt-1">
+                                                            ⚠️ No ambulances available
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="text-right">
                                             <span className={`px-2 py-1 rounded-full text-xs font-bold ${getGravityColor(incident.gravity)}`}>

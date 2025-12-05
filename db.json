@@ -39,7 +39,7 @@
     {
       "id": "1",
       "matricule": "AMB-001",
-      "status": "AVAILABLE",
+      "status": "OCCUPIED",
       "location": {
         "lat": 33.5898,
         "lng": -7.5898
@@ -60,6 +60,22 @@
       "location": {
         "lat": 33.56,
         "lng": -7.61
+      },
+      "group": {
+        "driver": "Omar",
+        "medic": "Yassine"
+      },
+      "equipment": [
+        "Basic Kit"
+      ]
+    },
+    {
+      "id": "3",
+      "matricule": "AMB-003",
+      "status": "AVAILABLE",
+      "location": {
+        "lat": 33.5,
+        "lng": -7.6
       },
       "group": {
         "driver": "Omar",
@@ -97,12 +113,12 @@
         "lng": -7.66
       },
       "gravity": "HIGH",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "patient": {
         "name": "Unknown",
         "age": null
       },
-      "AmbulanceId": null,
+      "AmbulanceId": 1,
       "createdAt": "2025-11-26T14:30:00Z"
     },
     {
