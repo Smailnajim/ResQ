@@ -56,7 +56,7 @@
     {
       "id": "2",
       "matricule": "AMB-002",
-      "status": "OCCUPIED",
+      "status": "AVAILABLE",
       "location": {
         "lat": 33.56,
         "lng": -7.61
@@ -96,7 +96,7 @@
         "lng": -7.6
       },
       "gravity": "CRITICAL",
-      "status": "IN_PROGRESS",
+      "status": "RESOLVED",
       "patient": {
         "name": "Hassan",
         "age": 65

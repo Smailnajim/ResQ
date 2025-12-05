@@ -87,6 +87,39 @@ export default function Incidents() {
         }
     };
 
+    // Update incident status
+    const [updatingStatus, setUpdatingStatus] = useState<string | number | null>(null);
+
+    const updateIncidentStatus = async (incident: Incident, newStatus: string) => {
+        setUpdatingStatus(incident.id);
+
+        try {
+            // Update incident status
+            await fetch(`http://localhost:5000/incidents/${incident.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStatus }),
+            });
+
+            // If resolved and has ambulance assigned, set ambulance to AVAILABLE
+            if (newStatus === "RESOLVED" && incident.AmbulanceId) {
+                await fetch(`http://localhost:5000/ambulances/${incident.AmbulanceId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "AVAILABLE" }),
+                });
+            }
+
+            // Refresh data
+            await fetchIncidents();
+            await fetchAmbulances();
+        } catch (error) {
+            console.error("Error updating incident status:", error);
+        } finally {
+            setUpdatingStatus(null);
+        }
+    };
+
     const getGravityColor = (gravity: string) => {
         switch (gravity) {
             case "CRITICAL": return "bg-red-100 text-red-800 border-red-200";
@@ -207,6 +240,40 @@ export default function Incidents() {
                                                             ⚠️ No ambulances available
                                                         </p>
                                                     )}
+                                                </div>
+                                            )}
+
+                                            {/* Change Status Section */}
+                                            {incident.status !== "RESOLVED" && incident.status !== "CANCELLED" && (
+                                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                                    <div className="text-xs text-gray-500 mb-2">Change Status:</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {incident.status === "PENDING" && incident.AmbulanceId && (
+                                                            <button
+                                                                onClick={() => updateIncidentStatus(incident, "IN_PROGRESS")}
+                                                                disabled={updatingStatus === incident.id}
+                                                                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
+                                                            >
+                                                                {updatingStatus === incident.id ? "..." : "▶️ Start"}
+                                                            </button>
+                                                        )}
+                                                        {incident.status === "IN_PROGRESS" && (
+                                                            <button
+                                                                onClick={() => updateIncidentStatus(incident, "RESOLVED")}
+                                                                disabled={updatingStatus === incident.id}
+                                                                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
+                                                            >
+                                                                {updatingStatus === incident.id ? "..." : "✅ Resolved"}
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => updateIncidentStatus(incident, "CANCELLED")}
+                                                            disabled={updatingStatus === incident.id}
+                                                            className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-xs font-medium rounded transition-all disabled:opacity-50"
+                                                        >
+                                                            {updatingStatus === incident.id ? "..." : "❌ Cancel"}
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
