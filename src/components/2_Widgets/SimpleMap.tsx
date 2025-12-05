@@ -328,9 +328,12 @@ export default function SimpleMap() {
                     </Marker>
                 ))}
 
-                {/* Connection lines between ambulances and assigned incidents */}
+                {/* Connection lines between ambulances and assigned incidents (only active ones) */}
                 {incidents
-                    .filter(incident => incident.AmbulanceId !== null)
+                    .filter(incident =>
+                        incident.AmbulanceId !== null &&
+                        (incident.status === "IN_PROGRESS" || incident.status === "PENDING")
+                    )
                     .map(incident => {
                         const ambulance = ambulances.find(
                             amb => String(amb.id) === String(incident.AmbulanceId)

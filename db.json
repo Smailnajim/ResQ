@@ -39,7 +39,7 @@
     {
       "id": "1",
       "matricule": "AMB-001",
-      "status": "OCCUPIED",
+      "status": "AVAILABLE",
       "location": {
         "lat": 33.5898,
         "lng": -7.5898
@@ -113,7 +113,7 @@
         "lng": -7.66
       },
       "gravity": "HIGH",
-      "status": "IN_PROGRESS",
+      "status": "RESOLVED",
       "patient": {
         "name": "Unknown",
         "age": null
@@ -130,7 +130,7 @@
         "lng": -7.577298484391981
       },
       "gravity": "HIGH",
-      "status": "IN_PROGRESS",
+      "status": "RESOLVED",
       "patient": {
         "name": "Unknown",
         "age": null
@@ -147,13 +147,64 @@
         "lng": -7.5898
       },
       "gravity": "CRITICAL",
-      "status": "IN_PROGRESS",
+      "status": "RESOLVED",
       "patient": {
         "name": "Unknown",
         "age": null
       },
       "AmbulanceId": "1",
       "createdAt": "2025-12-05T15:21:36.648Z"
+    },
+    {
+      "id": "41fd",
+      "type": "Fire",
+      "address": "hhhhhhhhhhh",
+      "location": {
+        "lat": 33.5731,
+        "lng": -7.5898
+      },
+      "gravity": "CRITICAL",
+      "status": "CANCELLED",
+      "patient": {
+        "name": "Unknown",
+        "age": null
+      },
+      "AmbulanceId": null,
+      "createdAt": "2025-12-05T16:59:08.245Z"
+    },
+    {
+      "id": "90dd",
+      "type": "Cardiac",
+      "address": "sssssssssssssssqq",
+      "location": {
+        "lat": 33.5731,
+        "lng": -7.5898
+      },
+      "gravity": "CRITICAL",
+      "status": "RESOLVED",
+      "patient": {
+        "name": "q",
+        "age": 3
+      },
+      "AmbulanceId": "1",
+      "createdAt": "2025-12-05T16:59:56.012Z"
+    },
+    {
+      "id": "5a45",
+      "type": "Accident",
+      "address": "sqcs",
+      "location": {
+        "lat": 33.5,
+        "lng": -7.58
+      },
+      "gravity": "CRITICAL",
+      "status": "CANCELLED",
+      "patient": {
+        "name": "Unknown",
+        "age": null
+      },
+      "AmbulanceId": "3",
+      "createdAt": "2025-12-05T17:01:09.798Z"
     }
   ],
   "maintenance": [
