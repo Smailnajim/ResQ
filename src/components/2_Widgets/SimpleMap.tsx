@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -249,6 +249,32 @@ export default function SimpleMap() {
                         </Popup>
                     </Marker>
                 ))}
+
+                {/* Connection lines between ambulances and assigned incidents */}
+                {incidents
+                    .filter(incident => incident.AmbulanceId !== null)
+                    .map(incident => {
+                        const ambulance = ambulances.find(
+                            amb => String(amb.id) === String(incident.AmbulanceId)
+                        );
+                        if (!ambulance) return null;
+
+                        return (
+                            <Polyline
+                                key={`line-${incident.id}-${ambulance.id}`}
+                                positions={[
+                                    [ambulance.location.lat, ambulance.location.lng],
+                                    [incident.location.lat, incident.location.lng]
+                                ]}
+                                pathOptions={{
+                                    color: "#8b5cf6",
+                                    weight: 3,
+                                    opacity: 0.8,
+                                    dashArray: "10, 10",
+                                }}
+                            />
+                        );
+                    })}
             </MapContainer>
 
             {/* Legend */}
@@ -285,6 +311,13 @@ export default function SimpleMap() {
                     <div className="flex items-center gap-2">
                         <span className="w-3 h-3 rounded bg-green-600"></span>
                         <span>Low</span>
+                    </div>
+                </div>
+                <div className="text-sm font-semibold mb-2 border-t pt-2">🔗 Connections</div>
+                <div className="space-y-1 text-xs">
+                    <div className="flex items-center gap-2">
+                        <span className="w-6 h-0.5 bg-purple-500" style={{ backgroundImage: "repeating-linear-gradient(90deg, #8b5cf6, #8b5cf6 4px, transparent 4px, transparent 8px)" }}></span>
+                        <span>Assigned</span>
                     </div>
                 </div>
             </div>
