@@ -94,11 +94,19 @@ export default function Incidents() {
         setUpdatingStatus(incident.id);
 
         try {
+            // Prepare update data
+            const updateData: { status: string; closedAt?: string } = { status: newStatus };
+
+            // Add closedAt timestamp for RESOLVED or CANCELLED
+            if (newStatus === "RESOLVED" || newStatus === "CANCELLED") {
+                updateData.closedAt = new Date().toISOString();
+            }
+
             // Update incident status
             await fetch(`http://localhost:5000/incidents/${incident.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: newStatus }),
+                body: JSON.stringify(updateData),
             });
 
             // If resolved or cancelled and has ambulance assigned, set ambulance to AVAILABLE
@@ -137,6 +145,25 @@ export default function Incidents() {
             case "RESOLVED": return "bg-green-100 text-green-800";
             case "CANCELLED": return "bg-gray-100 text-gray-800";
             default: return "bg-gray-100 text-gray-800";
+        }
+    };
+
+    // Calculate time to resolve an incident
+    const calculateResolutionTime = (createdAt: string, closedAt: string): string => {
+        const start = new Date(createdAt).getTime();
+        const end = new Date(closedAt).getTime();
+        const diffMs = end - start;
+
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+        if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        } else {
+            return `${seconds}s`;
         }
     };
 
@@ -206,6 +233,25 @@ export default function Incidents() {
                                                     <span className="text-blue-600">🚑 AMB-{String(incident.AmbulanceId).padStart(3, '0')}</span>
                                                 )}
                                             </div>
+
+                                            {/* Closed time for RESOLVED or CANCELLED */}
+                                            {(incident.status === "RESOLVED" || incident.status === "CANCELLED") && (incident as Incident & { closedAt?: string }).closedAt && (
+                                                <div className={`mt-2 p-2 rounded-lg ${incident.status === "RESOLVED" ? "bg-green-50" : "bg-gray-50"}`}>
+                                                    <div className={`text-xs flex items-center gap-1 ${incident.status === "RESOLVED" ? "text-green-600" : "text-gray-500"}`}>
+                                                        <span>🕐 {incident.status === "RESOLVED" ? "Resolved" : "Cancelled"} at:</span>
+                                                        <span className="font-medium">
+                                                            {new Date((incident as Incident & { closedAt?: string }).closedAt!).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                    <div className={`text-xs flex items-center gap-1 mt-1 ${incident.status === "RESOLVED" ? "text-green-700" : "text-gray-600"}`}>
+                                                        <span>⏱️ Duration:</span>
+                                                        <span className="font-bold">
+                                                            {calculateResolutionTime(incident.createdAt, (incident as Incident & { closedAt?: string }).closedAt!)}
+                                                        </span>
+                                                        <span>to {incident.status === "RESOLVED" ? "resolve" : "cancel"}</span>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {/* Assign Ambulance Section - Only for PENDING incidents */}
                                             {incident.status === "PENDING" && !incident.AmbulanceId && (

@@ -222,6 +222,42 @@
       },
       "AmbulanceId": "1",
       "createdAt": "2025-12-05T17:06:46.730Z"
+    },
+    {
+      "id": "a3c4",
+      "type": "Medical",
+      "address": "zzzzzzzzzzz",
+      "location": {
+        "lat": 33.5759,
+        "lng": -7.583
+      },
+      "gravity": "MEDIUM",
+      "status": "RESOLVED",
+      "patient": {
+        "name": "Unknown",
+        "age": null
+      },
+      "AmbulanceId": "1",
+      "createdAt": "2025-12-05T17:14:52.446Z",
+      "closedAt": "2025-12-05T17:15:27.880Z"
+    },
+    {
+      "id": "6fd6",
+      "type": "Other",
+      "address": "ddddddddd",
+      "location": {
+        "lat": 33.5744,
+        "lng": -7.5893
+      },
+      "gravity": "MEDIUM",
+      "status": "RESOLVED",
+      "patient": {
+        "name": "Unknown",
+        "age": null
+      },
+      "AmbulanceId": "1",
+      "createdAt": "2025-12-05T17:18:44.340Z",
+      "closedAt": "2025-12-05T17:19:15.483Z"
     }
   ],
   "maintenance": [
