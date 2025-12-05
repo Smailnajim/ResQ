@@ -116,6 +116,7 @@ export default function SimpleMap() {
     const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
     const [incidents, setIncidents] = useState<Incident[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
     // Casablanca center
     const center: L.LatLngExpression = [33.5731, -7.5898];
@@ -162,6 +163,35 @@ export default function SimpleMap() {
         }
     };
 
+    // Haversine formula to calculate distance between two points
+    const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371; // Earth's radius in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    };
+
+    // Get distances from selected incident to all ambulances
+    const getAmbulanceDistances = () => {
+        if (!selectedIncident) return [];
+        return ambulances
+            .map(amb => ({
+                ...amb,
+                distance: calculateDistance(
+                    selectedIncident.location.lat,
+                    selectedIncident.location.lng,
+                    amb.location.lat,
+                    amb.location.lng
+                )
+            }))
+            .sort((a, b) => a.distance - b.distance);
+    };
+
     return (
         <div className="w-full h-[calc(100vh-140px)] rounded-xl overflow-hidden shadow-lg border border-gray-200 relative">
             {/* Pulse animation for pending incidents */}
@@ -194,6 +224,9 @@ export default function SimpleMap() {
                         key={`incident-${incident.id}`}
                         position={[incident.location.lat, incident.location.lng]}
                         icon={createIncidentIcon(incident.gravity, incident.status)}
+                        eventHandlers={{
+                            click: () => setSelectedIncident(incident)
+                        }}
                     >
                         <Popup>
                             <div className="min-w-[220px]">
@@ -339,6 +372,58 @@ export default function SimpleMap() {
                     </div>
                 </div>
             </div>
+
+            {/* Distance Panel - shown when an incident is selected */}
+            {selectedIncident && (
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-xl p-4 z-[1001] min-w-[320px] max-w-[400px]">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl">📏</span>
+                            <h3 className="font-bold text-gray-800">Distances to Ambulances</h3>
+                        </div>
+                        <button
+                            onClick={() => setSelectedIncident(null)}
+                            className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                        >
+                            ×
+                        </button>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-lg p-2 mb-3">
+                        <div className="text-xs text-gray-500">Selected Incident</div>
+                        <div className="font-semibold text-gray-800">🚨 {selectedIncident.type}</div>
+                        <div className="text-sm text-gray-600">📍 {selectedIncident.address}</div>
+                    </div>
+
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                        {getAmbulanceDistances().map((amb, index) => (
+                            <div
+                                key={amb.id}
+                                className={`flex items-center justify-between p-2 rounded-lg ${index === 0 ? "bg-green-50 border border-green-200" : "bg-gray-50"
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${amb.status === "AVAILABLE" ? "bg-green-500" :
+                                            amb.status === "OCCUPIED" ? "bg-red-500" : "bg-yellow-500"
+                                        }`}></span>
+                                    <div>
+                                        <div className="font-medium text-sm">🚑 {amb.matricule}</div>
+                                        <div className="text-xs text-gray-500">{amb.status}</div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className={`font-bold ${index === 0 ? "text-green-600" : "text-gray-700"}`}>
+                                        {amb.distance.toFixed(2)} km
+                                    </div>
+                                    {index === 0 && (
+                                        <div className="text-xs text-green-600">Closest</div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
