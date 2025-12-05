@@ -259,9 +259,6 @@ export default function SimpleMap() {
                         key={`incident-${incident.id}`}
                         position={[incident.location.lat, incident.location.lng]}
                         icon={createIncidentIcon(incident.gravity, incident.status)}
-                        eventHandlers={{
-                            click: () => setSelectedIncident(incident)
-                        }}
                     >
                         <Popup>
                             <div className="min-w-[220px]">
@@ -283,6 +280,13 @@ export default function SimpleMap() {
                                         <p className="text-blue-600"><strong>🚑 Ambulance:</strong> AMB-{String(incident.AmbulanceId).padStart(3, '0')}</p>
                                     )}
                                 </div>
+                                {/* Button to show distance panel */}
+                                <button
+                                    onClick={() => setSelectedIncident(incident)}
+                                    className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded transition-all flex items-center justify-center gap-2"
+                                >
+                                    📏 Calculate Distances
+                                </button>
                             </div>
                         </Popup>
                     </Marker>
@@ -461,8 +465,8 @@ export default function SimpleMap() {
                                             onClick={() => assignAmbulance(amb.id)}
                                             disabled={assigning === amb.id}
                                             className={`px-3 py-1 rounded text-xs font-medium transition-all ${assigning === amb.id
-                                                    ? "bg-gray-300 text-gray-500 cursor-wait"
-                                                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                                                ? "bg-gray-300 text-gray-500 cursor-wait"
+                                                : "bg-blue-600 hover:bg-blue-700 text-white"
                                                 }`}
                                         >
                                             {assigning === amb.id ? "..." : "Assign"}
