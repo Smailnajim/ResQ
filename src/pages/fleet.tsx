@@ -1,27 +1,7 @@
 import { useEffect, useState } from "react";
-
-interface Ambulance {
-    id: number | string;
-    matricule: string;
-    status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE" | "LUNCH_BREAK";
-    location: {
-        lat: number;
-        lng: number;
-    };
-    group: {
-        driver: string;
-        medic: string;
-    };
-    equipment: string[];
-}
-
-interface Incident {
-    id: number | string;
-    status: string;
-    AmbulanceId: number | string | null;
-}
-
-type StatusFilter = "ALL" | "AVAILABLE" | "OCCUPIED" | "MAINTENANCE" | "LUNCH_BREAK";
+import type { Ambulance, Incident, StatusFilter } from "../types";
+import { ambulanceService, incidentService } from "../services/api";
+import { getStatusConfig } from "../utils/helpers";
 
 export default function Fleet() {
     const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
@@ -41,14 +21,13 @@ export default function Fleet() {
         lng: "-7.5898",
     });
 
+    // Fetch data using services
     const fetchData = async () => {
         try {
-            const [ambulancesRes, incidentsRes] = await Promise.all([
-                fetch("http://localhost:5000/ambulances"),
-                fetch("http://localhost:5000/incidents")
+            const [ambulancesData, incidentsData] = await Promise.all([
+                ambulanceService.getAll(),
+                incidentService.getAll()
             ]);
-            const ambulancesData = await ambulancesRes.json();
-            const incidentsData = await incidentsRes.json();
             setAmbulances(ambulancesData);
             setIncidents(incidentsData);
         } catch (error) {
@@ -79,11 +58,7 @@ export default function Fleet() {
 
         setUpdating(ambulanceId);
         try {
-            await fetch(`http://localhost:5000/ambulances/${ambulanceId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: newStatus }),
-            });
+            await ambulanceService.updateStatus(ambulanceId, newStatus);
             await fetchData();
         } catch (error) {
             console.error("Error updating ambulance status:", error);
@@ -105,9 +80,7 @@ export default function Fleet() {
 
         setUpdating(ambulanceId);
         try {
-            await fetch(`http://localhost:5000/ambulances/${ambulanceId}`, {
-                method: "DELETE",
-            });
+            await ambulanceService.delete(ambulanceId);
             await fetchData();
         } catch (error) {
             console.error("Error deleting ambulance:", error);
@@ -127,16 +100,12 @@ export default function Fleet() {
 
         setCreating(true);
         try {
-            await fetch("http://localhost:5000/ambulances", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    matricule: formData.matricule,
-                    status: "AVAILABLE",
-                    location: { lat: parseFloat(formData.lat), lng: parseFloat(formData.lng) },
-                    group: { driver: formData.driver, medic: formData.medic },
-                    equipment: formData.equipment.split(",").map(e => e.trim()).filter(e => e),
-                }),
+            await ambulanceService.create({
+                matricule: formData.matricule,
+                status: "AVAILABLE",
+                location: { lat: parseFloat(formData.lat), lng: parseFloat(formData.lng) },
+                group: { driver: formData.driver, medic: formData.medic },
+                equipment: formData.equipment.split(",").map(e => e.trim()).filter(e => e),
             });
             await fetchData();
             setShowForm(false);
@@ -159,16 +128,6 @@ export default function Fleet() {
         OCCUPIED: ambulances.filter(a => a.status === "OCCUPIED").length,
         MAINTENANCE: ambulances.filter(a => a.status === "MAINTENANCE").length,
         LUNCH_BREAK: ambulances.filter(a => a.status === "LUNCH_BREAK").length,
-    };
-
-    const getStatusConfig = (status: string) => {
-        const configs: Record<string, { bg: string; text: string; icon: string; border: string }> = {
-            AVAILABLE: { bg: "bg-emerald-500", text: "text-emerald-600", icon: "🟢", border: "border-emerald-400" },
-            OCCUPIED: { bg: "bg-red-500", text: "text-red-600", icon: "🔴", border: "border-red-400" },
-            MAINTENANCE: { bg: "bg-amber-500", text: "text-amber-600", icon: "🟡", border: "border-amber-400" },
-            LUNCH_BREAK: { bg: "bg-orange-500", text: "text-orange-600", icon: "🍴", border: "border-orange-400" },
-        };
-        return configs[status] || { bg: "bg-gray-500", text: "text-gray-600", icon: "⚪", border: "border-gray-400" };
     };
 
     return (
@@ -329,7 +288,7 @@ export default function Fleet() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {filteredAmbulances.map(ambulance => {
+                        {filteredAmbulances.map(ambulance => { //return cards
                             const config = getStatusConfig(ambulance.status);
                             const isAssigned = isAssignedToActiveIncident(ambulance.id);
 

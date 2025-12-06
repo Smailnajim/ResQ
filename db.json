@@ -39,7 +39,7 @@
     {
       "id": "1",
       "matricule": "AMB-001",
-      "status": "AVAILABLE",
+      "status": "OCCUPIED",
       "location": {
         "lat": 33.5898,
         "lng": -7.5898
@@ -56,7 +56,7 @@
     {
       "id": "2",
       "matricule": "AMB-002",
-      "status": "AVAILABLE",
+      "status": "LUNCH_BREAK",
       "location": {
         "lat": 33.56,
         "lng": -7.61
@@ -72,7 +72,7 @@
     {
       "id": "3",
       "matricule": "AMB-003",
-      "status": "AVAILABLE",
+      "status": "OCCUPIED",
       "location": {
         "lat": 33.5,
         "lng": -7.6
@@ -88,7 +88,7 @@
     {
       "id": "1a25",
       "matricule": "matrical1, matrical2, 3",
-      "status": "AVAILABLE",
+      "status": "OCCUPIED",
       "location": {
         "lat": 33.5731,
         "lng": -7.5898
@@ -104,7 +104,7 @@
     {
       "id": "b173",
       "matricule": "ddd1, ddd2, dd",
-      "status": "AVAILABLE",
+      "status": "OCCUPIED",
       "location": {
         "lat": 33.5731,
         "lng": -7.5898
@@ -294,6 +294,58 @@
       "AmbulanceId": "1",
       "createdAt": "2025-12-05T23:06:17.281Z",
       "closedAt": "2025-12-05T23:22:17.503Z"
+    },
+    {
+      "id": "c97a",
+      "type": "Accident",
+      "address": "kolai rchid",
+      "location": {
+        "lat": 33.5849,
+        "lng": -7.5348
+      },
+      "gravity": "CRITICAL",
+      "status": "RESOLVED",
+      "patient": {
+        "name": "Unknown",
+        "age": null
+      },
+      "AmbulanceId": "1",
+      "createdAt": "2025-12-06T14:41:53.209Z",
+      "closedAt": "2025-12-06T14:43:25.437Z"
+    },
+    {
+      "id": "c462",
+      "type": "Cardiac",
+      "address": "file rouge",
+      "location": {
+        "lat": 33.7662,
+        "lng": -7.5802
+      },
+      "gravity": "LOW",
+      "status": "IN_PROGRESS",
+      "patient": {
+        "name": "Unknown",
+        "age": null
+      },
+      "AmbulanceId": "1a25",
+      "createdAt": "2025-12-06T14:44:29.632Z"
+    },
+    {
+      "id": "8beb",
+      "type": "Other",
+      "address": "jd",
+      "location": {
+        "lat": 33.4826,
+        "lng": -7.5812
+      },
+      "gravity": "LOW",
+      "status": "IN_PROGRESS",
+      "patient": {
+        "name": "Unknown",
+        "age": null
+      },
+      "AmbulanceId": "1",
+      "createdAt": "2025-12-06T14:46:59.495Z"
     }
   ],
   "maintenance": [

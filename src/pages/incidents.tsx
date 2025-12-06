@@ -2,25 +2,23 @@ import { useEffect, useState } from "react";
 import IncidentForm from "@/components/3_Modules/IncidentForm";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import type { Incident } from "@/interfaces/Incident";
-
-interface Ambulance {
-    id: number;
-    matricule: string;
-    status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
-}
+import type { Ambulance, Incident } from "../types";
+import { ambulanceService, incidentService } from "../services/api";
+import { getGravityColor, getIncidentStatusColor, calculateResolutionTime } from "../utils/helpers";
 
 export default function Incidents() {
     const [incidents, setIncidents] = useState<Incident[]>([]);
     const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
     const [loading, setLoading] = useState(true);
-    const [assigningId, setAssigningId] = useState<number | null>(null);
-    const [selectedAmbulance, setSelectedAmbulance] = useState<{ [key: number]: string }>({});
+    const [assigningId, setAssigningId] = useState<number | string | null>(null);
+    const [selectedAmbulance, setSelectedAmbulance] = useState<{ [key: string | number]: string }>({});
+    const [updatingStatus, setUpdatingStatus] = useState<string | number | null>(null);
+    const [deleting, setDeleting] = useState<string | number | null>(null);
 
+    // Fetch data using services
     const fetchIncidents = async () => {
         try {
-            const response = await fetch("http://localhost:5000/incidents");
-            const data = await response.json();
+            const data = await incidentService.getAll();
             setIncidents(data);
         } catch (error) {
             console.error("Error fetching incidents:", error);
@@ -31,8 +29,7 @@ export default function Incidents() {
 
     const fetchAmbulances = async () => {
         try {
-            const response = await fetch("http://localhost:5000/ambulances");
-            const data = await response.json();
+            const data = await ambulanceService.getAll();
             setAmbulances(data);
         } catch (error) {
             console.error("Error fetching ambulances:", error);
@@ -46,7 +43,7 @@ export default function Incidents() {
 
     const availableAmbulances = ambulances.filter(amb => amb.status === "AVAILABLE");
 
-    const assignAmbulance = async (incidentId: number) => {
+    const assignAmbulance = async (incidentId: number | string) => {
         const ambulanceId = selectedAmbulance[incidentId];
         if (!ambulanceId) return;
 
@@ -54,21 +51,10 @@ export default function Incidents() {
 
         try {
             // Update incident with ambulance ID and change status to IN_PROGRESS
-            await fetch(`http://localhost:5000/incidents/${incidentId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    AmbulanceId: parseInt(ambulanceId),
-                    status: "IN_PROGRESS"
-                }),
-            });
+            await incidentService.assignAmbulance(incidentId, ambulanceId);
 
             // Update ambulance status to OCCUPIED
-            await fetch(`http://localhost:5000/ambulances/${ambulanceId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "OCCUPIED" }),
-            });
+            await ambulanceService.updateStatus(ambulanceId, "OCCUPIED");
 
             // Refresh data
             await fetchIncidents();
@@ -88,34 +74,21 @@ export default function Incidents() {
     };
 
     // Update incident status
-    const [updatingStatus, setUpdatingStatus] = useState<string | number | null>(null);
-
-    const updateIncidentStatus = async (incident: Incident, newStatus: string) => {
+    const updateIncidentStatus = async (incident: Incident, newStatus: Incident["status"]) => {
         setUpdatingStatus(incident.id);
 
         try {
             // Prepare update data
-            const updateData: { status: string; closedAt?: string } = { status: newStatus };
+            const closedAt = (newStatus === "RESOLVED" || newStatus === "CANCELLED")
+                ? new Date().toISOString()
+                : undefined;
 
-            // Add closedAt timestamp for RESOLVED or CANCELLED
-            if (newStatus === "RESOLVED" || newStatus === "CANCELLED") {
-                updateData.closedAt = new Date().toISOString();
-            }
-
-            // Update incident status
-            await fetch(`http://localhost:5000/incidents/${incident.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(updateData),
-            });
+            // Update incident status using service
+            await incidentService.updateStatus(incident.id, newStatus, closedAt);
 
             // If resolved or cancelled and has ambulance assigned, set ambulance to AVAILABLE
             if ((newStatus === "RESOLVED" || newStatus === "CANCELLED") && incident.AmbulanceId) {
-                await fetch(`http://localhost:5000/ambulances/${incident.AmbulanceId}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "AVAILABLE" }),
-                });
+                await ambulanceService.updateStatus(incident.AmbulanceId, "AVAILABLE");
             }
 
             // Refresh data
@@ -129,8 +102,6 @@ export default function Incidents() {
     };
 
     // Delete incident
-    const [deleting, setDeleting] = useState<string | number | null>(null);
-
     const deleteIncident = async (incident: Incident) => {
         if (!confirm(`Are you sure you want to delete this incident at ${incident.address}?`)) {
             return;
@@ -140,17 +111,11 @@ export default function Incidents() {
         try {
             // If incident has ambulance and is active, free the ambulance first
             if (incident.AmbulanceId && (incident.status === "IN_PROGRESS" || incident.status === "PENDING")) {
-                await fetch(`http://localhost:5000/ambulances/${incident.AmbulanceId}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "AVAILABLE" }),
-                });
+                await ambulanceService.updateStatus(incident.AmbulanceId, "AVAILABLE");
             }
 
-            // Delete the incident
-            await fetch(`http://localhost:5000/incidents/${incident.id}`, {
-                method: "DELETE",
-            });
+            // Delete the incident using service
+            await incidentService.delete(incident.id);
 
             await fetchIncidents();
             await fetchAmbulances();
@@ -158,45 +123,6 @@ export default function Incidents() {
             console.error("Error deleting incident:", error);
         } finally {
             setDeleting(null);
-        }
-    };
-
-    const getGravityColor = (gravity: string) => {
-        switch (gravity) {
-            case "CRITICAL": return "bg-red-100 text-red-800 border-red-200";
-            case "HIGH": return "bg-orange-100 text-orange-800 border-orange-200";
-            case "MEDIUM": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-            case "LOW": return "bg-green-100 text-green-800 border-green-200";
-            default: return "bg-gray-100 text-gray-800 border-gray-200";
-        }
-    };
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "PENDING": return "bg-blue-100 text-blue-800";
-            case "IN_PROGRESS": return "bg-purple-100 text-purple-800";
-            case "RESOLVED": return "bg-green-100 text-green-800";
-            case "CANCELLED": return "bg-gray-100 text-gray-800";
-            default: return "bg-gray-100 text-gray-800";
-        }
-    };
-
-    // Calculate time to resolve an incident
-    const calculateResolutionTime = (createdAt: string, closedAt: string): string => {
-        const start = new Date(createdAt).getTime();
-        const end = new Date(closedAt).getTime();
-        const diffMs = end - start;
-
-        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-
-        if (hours > 0) {
-            return `${hours}h ${minutes}m`;
-        } else if (minutes > 0) {
-            return `${minutes}m ${seconds}s`;
-        } else {
-            return `${seconds}s`;
         }
     };
 
@@ -249,7 +175,7 @@ export default function Incidents() {
                                                 <span className="font-semibold text-gray-800">
                                                     {incident.type}
                                                 </span>
-                                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(incident.status)}`}>
+                                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${getIncidentStatusColor(incident.status)}`}>
                                                     {incident.status}
                                                 </span>
                                             </div>
@@ -268,18 +194,18 @@ export default function Incidents() {
                                             </div>
 
                                             {/* Closed time for RESOLVED or CANCELLED */}
-                                            {(incident.status === "RESOLVED" || incident.status === "CANCELLED") && (incident as Incident & { closedAt?: string }).closedAt && (
+                                            {(incident.status === "RESOLVED" || incident.status === "CANCELLED") && incident.closedAt && (
                                                 <div className={`mt-2 p-2 rounded-lg ${incident.status === "RESOLVED" ? "bg-green-50" : "bg-gray-50"}`}>
                                                     <div className={`text-xs flex items-center gap-1 ${incident.status === "RESOLVED" ? "text-green-600" : "text-gray-500"}`}>
                                                         <span>🕐 {incident.status === "RESOLVED" ? "Resolved" : "Cancelled"} at:</span>
                                                         <span className="font-medium">
-                                                            {new Date((incident as Incident & { closedAt?: string }).closedAt!).toLocaleString()}
+                                                            {new Date(incident.closedAt).toLocaleString()}
                                                         </span>
                                                     </div>
                                                     <div className={`text-xs flex items-center gap-1 mt-1 ${incident.status === "RESOLVED" ? "text-green-700" : "text-gray-600"}`}>
                                                         <span>⏱️ Duration:</span>
                                                         <span className="font-bold">
-                                                            {calculateResolutionTime(incident.createdAt, (incident as Incident & { closedAt?: string }).closedAt!)}
+                                                            {calculateResolutionTime(incident.createdAt, incident.closedAt)}
                                                         </span>
                                                         <span>to {incident.status === "RESOLVED" ? "resolve" : "cancel"}</span>
                                                     </div>

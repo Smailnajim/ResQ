@@ -3,42 +3,8 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet"
 import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-
-// Ambulance type definition
-interface Ambulance {
-    id: number | string;
-    matricule: string;
-    status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE" | "LUNCH_BREAK";
-    location: {
-        lat: number;
-        lng: number;
-    };
-    group: {
-        driver: string;
-        medic: string;
-    };
-    equipment: string[];
-}
-
-// Incident type definition
-interface Incident {
-    id: number | string;
-    type: string;
-    address: string;
-    location: {
-        lat: number;
-        lng: number;
-    };
-    gravity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
-    status: "PENDING" | "IN_PROGRESS" | "RESOLVED" | "CANCELLED";
-    patient: {
-        name: string;
-        age: number | null;
-    };
-    AmbulanceId: number | null;
-}
-
-// Custom ambulance icon based on status
+import type { Ambulance, Incident } from "../../types";
+import { ambulanceService, incidentService } from "../../services/api";// Custom ambulance icon based on status
 const createAmbulanceIcon = (status: string) => {
     const colorMap: { [key: string]: string } = {
         AVAILABLE: "#22c55e",
@@ -128,15 +94,13 @@ export default function SimpleMap() {
     // Casablanca center
     const center: L.LatLngExpression = [33.5731, -7.5898];
 
-    // Fetch data from JSON server
+    // Fetch data using services
     const fetchData = async () => {
         try {
-            const [ambulancesRes, incidentsRes] = await Promise.all([
-                fetch("http://localhost:5000/ambulances"),
-                fetch("http://localhost:5000/incidents")
+            const [ambulancesData, incidentsData] = await Promise.all([
+                ambulanceService.getAll(),
+                incidentService.getAll()
             ]);
-            const ambulancesData = await ambulancesRes.json();
-            const incidentsData = await incidentsRes.json();
             setAmbulances(ambulancesData);
             setIncidents(incidentsData);
         } catch (error) {
@@ -158,21 +122,10 @@ export default function SimpleMap() {
 
         try {
             // Update incident with ambulance ID and change status to IN_PROGRESS
-            await fetch(`http://localhost:5000/incidents/${selectedIncident.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    AmbulanceId: ambulanceId,
-                    status: "IN_PROGRESS"
-                }),
-            });
+            await incidentService.assignAmbulance(selectedIncident.id, ambulanceId);
 
             // Update ambulance status to OCCUPIED
-            await fetch(`http://localhost:5000/ambulances/${ambulanceId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "OCCUPIED" }),
-            });
+            await ambulanceService.updateStatus(ambulanceId, "OCCUPIED");
 
             // Refresh data and close panel
             await fetchData();
